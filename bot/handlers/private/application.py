@@ -1,14 +1,14 @@
 import re
 from datetime import date
 
-from aiogram import F
+from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.orm import Session
 
 from bot import db as DB
-from bot.config import dp
+from bot.config import logger
 from bot.utils.keyboard import InlineKeyboard, InlineKeyboardMarkup
 
 
@@ -41,30 +41,37 @@ async def app_call_handler(call: CallbackQuery, state: FSMContext) -> None:
 
 async def firstSur_name_handler(message: Message, state: FSMContext) -> None:
     name: str = message.text.strip()
-    await state.set_data({"firstSurName": name})
+    if LATIN_REGEX.match(name):
+        await state.set_data({"firstSurName": name})
 
-    await message.answer("Введите ваш год рождения")
+        await message.answer("Введите ваш год рождения")
 
-    await state.set_state(States.birthYear)
+        await state.set_state(States.birthYear)
+    else:
+        await message.answer("Текст должен содержать только латинские буквы")
 
 
 async def birthYear_handler(message: Message, state: FSMContext) -> None:
-    currentYear: int = date.today().year
-    year: int = int(message.text)
-    age: int = currentYear - year
-    if 0 < age < 150:
-        buttons: list[dict] = [
-            {"text": "Мужчина", "callback_data": "male"},
-            {"text": "Женщина", "callback_data": "female"},
-        ]
-        markup: InlineKeyboardMarkup = InlineKeyboard(buttons).markup()
+    text = message.text.strip()
+    if text.isnumeric():
+        year: int = int(text)
+        currentYear: int = date.today().year
+        age: int = currentYear - year
+        if 0 < age < 150:
+            buttons: list[dict] = [
+                {"text": "Мужчина", "callback_data": "male"},
+                {"text": "Женщина", "callback_data": "female"},
+            ]
+            markup: InlineKeyboardMarkup = InlineKeyboard(buttons).markup()
 
-        await message.answer("Введите ваш пол", reply_markup=markup)
-        await state.set_data({"birthYear": year})
+            await message.answer("Введите ваш пол", reply_markup=markup)
+            await state.set_data({"birthYear": year})
 
-        await state.set_state(States.sex)
-    else:
-        await message.answer("Введите достоверный год рождения")
+            await state.set_state(States.sex)
+
+            return
+
+    await message.answer("Введите достоверный год рождения")
 
 
 async def sex_handler(call: CallbackQuery, state: FSMContext) -> None:
@@ -120,7 +127,7 @@ async def ageCategory_handler(call: CallbackQuery, state: FSMContext) -> None:
 
 
 async def ratingFIDE_handler(message: Message, state: FSMContext) -> None:
-    rating: int = int(message.text)
+    rating: int = int(message.text.strip())
     await state.set_data({"ratingFIDE": rating})
 
     buttons: list[dict] = [
@@ -138,7 +145,7 @@ async def class_handler(call: CallbackQuery, state: FSMContext) -> None:
     classRank: int = int(call.data)
     await state.set_data({"classRank": classRank})
 
-    await call.message.answer("Введите ваш ИНН/ПИН")
+    await call.message.edit_text("Введите ваш ИНН/ПИН")
     await call.answer()
 
     await state.set_state(States.innPin)
@@ -208,21 +215,21 @@ async def status_handler(call: CallbackQuery, state: FSMContext, db: Session) ->
     data: dict = await state.get_data()
     dbUser: DB.User = DB.User(**data)
     db.add(dbUser)
-    db.commit()
+    await db.commit()
 
     await call.message.edit_text("Все готово")
 
 
-def reg_handler() -> None:
-    dp.callback_query.register(app_call_handler, F.data == "application")
-    dp.message.register(
-        firstSur_name_handler, F.text.strip().regexp(LATIN_REGEX), States.firstSur_name
-    )
-    dp.message.register(birthYear_handler, F.text.isnumeric(), States.birthYear)
-    dp.callback_query.register(sex_handler, States.sex)
-    dp.callback_query.register(ageCategory_handler, States.ageCategory)
-    dp.message.register(ratingFIDE_handler, F.text.isnumeric(), States.ratingFIDE)
-    dp.callback_query.register(class_handler, States.classRank)
-    dp.message.register(innPin_handler, States.innPin)
-    dp.callback_query.register(сriteria_handler, States.criteria)
-    dp.callback_query.register(status_handler, States.status)
+def reg_handler(router: Router) -> None:
+    router.callback_query.register(app_call_handler, F.data == "application")
+    router.message.register(firstSur_name_handler, States.firstSur_name)
+    router.message.register(birthYear_handler, States.birthYear)
+    router.callback_query.register(sex_handler, States.sex)
+    router.callback_query.register(ageCategory_handler, States.ageCategory)
+    router.message.register(ratingFIDE_handler, F.text.isnumeric(), States.ratingFIDE)
+    router.callback_query.register(class_handler, States.classRank)
+    router.message.register(innPin_handler, States.innPin)
+    router.callback_query.register(сriteria_handler, States.criteria)
+    router.callback_query.register(status_handler, States.status)
+
+    logger.debug("Application handler registered")

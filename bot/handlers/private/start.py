@@ -1,7 +1,8 @@
+from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from bot.config import dp
+from bot.config import logger
 
 
 async def start(message: Message) -> None:
@@ -10,7 +11,13 @@ async def start(message: Message) -> None:
     ]
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
-    await message.answer("Это тестовый бот для подачи заявок на шахматные турниры", reply_markup=markup)
+    await message.answer(
+        "Это тестовый бот для подачи заявок на шахматные турниры",
+        reply_markup=markup,
+    )
 
-def reg_handler() -> None:
-    dp.message.register(start, Command(commands=["start"]))
+
+def reg_handler(router: Router) -> None:
+    router.message.register(start, Command(commands=["start"]))
+
+    logger.debug("Start handler registered")

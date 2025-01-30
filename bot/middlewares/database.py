@@ -1,6 +1,4 @@
 from aiogram import BaseMiddleware
-from aiogram.types import Update
-from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
 

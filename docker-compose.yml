@@ -2,27 +2,27 @@ services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_USER: test
-      POSTGRES_PASSWORD: 123
-      POSTGRES_DB: bot
+      DB_USER: "test"
+      DB_PASS: "123"
+      DB_DB: "bot"
     ports:
       - "5432:5432"
     volumes:
       - chessapp-data:/var/lib/postgresql/data
 
-  # app:
-  #   build: .
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     DATABASE_URL: postgres://Ash:123@db:5432/bot
-  #   ports:
-  #     - "5000:5000"
-  #   depends_on:
-  #     - db
-  #   volumes:
-  #     - .:/app
-  #   working_dir: /app
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://test:123@localhost:5432/bot
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    working_dir: /app
 
 volumes:
   chessapp-data:

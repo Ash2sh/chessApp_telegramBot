@@ -1,30 +1,34 @@
 import asyncio
 import logging
 
+from aiogram import Bot, Dispatcher
+
 from . import handlers, middlewares
-from .config import bot, dp, logger
-from .utils import notify
+from .config import TOKEN, logger
+from .middlewares.broadcaster import Notify
 
 
-async def on_startup() -> None:
-    await notify.superusers("bot is running")
+async def on_startup(bot: Bot) -> None:
+    logger.info("Bot is running")
+
+    await Notify(bot).superusers("bot is running")
 
 
 async def on_shutdown() -> None:
     logger.warning("Shutting down..")
-    await bot.session.close()
-    await dp.storage.close()
-    logger.warning("Bye!")
 
 
 async def main() -> None:
-    handlers.setup()
-    middlewares.setup()
+    dp: Dispatcher = Dispatcher()
+    bot: Bot = Bot(token=TOKEN)
+
+    handlers.setup(dp, bot)
 
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
     await dp.start_polling(bot)
+
 
 def cli():
     """Wrapper for command line"""
