@@ -1,11 +1,11 @@
 from aiogram import BaseMiddleware
-from sqlalchemy.orm import sessionmaker
 
+from ..db.base import ExcelDB
 
 class DatabaseMiddleware(BaseMiddleware):
-    def __init__(self, sessionmaker: sessionmaker) -> None:
-        self.sessionmaker = sessionmaker
+    def __init__(self, database: ExcelDB) -> None:
+        self.database = database
 
     async def __call__(self, handler, event, data):
-        data["db"] = self.sessionmaker()
+        data["db"] = self.database
         return await handler(event, data)

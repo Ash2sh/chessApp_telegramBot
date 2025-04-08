@@ -3,7 +3,7 @@ import logging
 
 from aiogram import Bot, Dispatcher
 
-from . import handlers, middlewares
+from . import handlers
 from .config import TOKEN, logger
 from .middlewares.broadcaster import Notify
 

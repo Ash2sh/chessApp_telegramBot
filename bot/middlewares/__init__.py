@@ -1,17 +1,18 @@
 from aiogram import Bot, Router, BaseMiddleware
 
 from bot.config import logger
-from bot.db.base import create_pool
+from bot.db.user import User
 
 from .broadcaster import NotifyMiddleware
 from .database import DatabaseMiddleware
+from ..config import dataPath
 
 
 class Middleware:
     def __init__(self, bot: Bot, router: Router) -> None:
         self.router = router
         self.middlewares: dict[BaseMiddleware] = {
-            "db": DatabaseMiddleware(create_pool()),
+            "db": DatabaseMiddleware(User(dataPath + '/users.xlsx')),
             "notify": NotifyMiddleware(bot),
         }
 
