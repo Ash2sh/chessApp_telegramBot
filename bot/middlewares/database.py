@@ -1,6 +1,7 @@
 from aiogram import BaseMiddleware
 
-from ..db.base import ExcelDB
+from bot.db.base import ExcelDB
+
 
 class DatabaseMiddleware(BaseMiddleware):
     def __init__(self, database: ExcelDB) -> None:

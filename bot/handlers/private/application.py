@@ -1,13 +1,13 @@
 import re
 from datetime import date
 
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
-from ...db.base import ExcelDB
 from bot.config import logger
+from bot.db.base import ExcelDB
 from bot.utils.keyboard import InlineKeyboard, InlineKeyboardMarkup
 
 
@@ -140,7 +140,9 @@ async def gender_handler(call: CallbackQuery, state: FSMContext) -> None:
     callData: str = call.data
     if callData == "male":
         await state.update_data({"gender": "M"})
-        buttons = [data for i, data in enumerate(ageCategoryBtn) if i > 17 or i % 2 == 0]
+        buttons = [
+            data for i, data in enumerate(ageCategoryBtn) if i > 17 or i % 2 == 0
+        ]
 
     elif callData == "female":
         await state.update_data({"gender": "F"})
@@ -215,7 +217,6 @@ async def status_handler(call: CallbackQuery, state: FSMContext, db: ExcelDB) ->
     await state.update_data({"status": status})
 
     data: dict = await state.get_data()
-    print(data)
     db.add(data)
 
     await call.message.edit_text("Все готово")
