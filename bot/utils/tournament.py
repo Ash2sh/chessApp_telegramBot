@@ -19,7 +19,9 @@ class TournamentParams:
     variant: str = "standard"  # "standard" "chess960" "crazyhouse" "antichess" etc.
     rated: bool = True  # рейтинг или нет
     berserkable: bool = True  # можно ли использовать берсерк
-    streakable: bool = True # After 2 wins, consecutive wins grant 4 points instead of 2.
+    streakable: bool = (
+        True  # After 2 wins, consecutive wins grant 4 points instead of 2.
+    )
     description: Optional[str] = None  # описание турнира
     password: Optional[str] = None  # пароль для входа
     conditions_team: Optional[str] = None  # ID команды, если турнир только для команды
@@ -33,7 +35,10 @@ class TournamentParams:
 
 class Tournament:
     def __init__(
-        self, session: ClientSession, headers: str, params: TournamentParams | None = None
+        self,
+        session: ClientSession,
+        headers: dict,
+        params: TournamentParams | None = None,
     ) -> None:
         self.session = session
         self.params = params
@@ -41,7 +46,7 @@ class Tournament:
         self.data: dict | None = None
 
     def when(self) -> datetime:
-        return datetime.strptime(self.data["startsAt"][:-4], "%Y-%m-%dT%H:%M:%S.%f")
+        return timezone.localize(datetime.strptime(self.data["startsAt"][:-4], "%Y-%m-%dT%H:%M:%S.%f"))
 
     def get_id(self) -> str:
         return self.data["id"]
@@ -65,26 +70,30 @@ class Tournament:
                 logger.info(f"Турнир успешно создан! id турнира: {self.get_id()}")
             else:
                 error_data = await response.text()
-                logger.error(
+                errorMessage = (
                     f"Ошибка при создании турнира: {response.status}, {error_data}"
                 )
+                logger.error(errorMessage)
+                raise ConnectionError(errorMessage)
 
-    async def terminate(self) -> bool:
+    async def terminate(self) -> None:
         if not self.data:
-            logger.error("Турнир еще не создан")
-            return False
-
+            errorMessage = "Турнир еще не создан"
+            logger.error(errorMessage)
+            raise RuntimeError(errorMessage)
         async with self.session.post(
             f"https://lichess.org/api/tournament/{self.get_id()}/terminate",
             headers=self.headers,
         ) as response:
             if response.ok:
                 logger.info(f"Турнир завершен! id: {self.get_id()}")
-                return True
             else:
                 error_data = await response.text()
-                logger.error(f"Ошибка при завершении: {response.status}, {error_data}")
-                return False
+                errorMessage = f"Ошибка при завершении: {response.status}, {error_data}"
+                logger.error(errorMessage)
+                raise ConnectionError(
+                    f"Ошибка при завершении: {response.status}, {error_data}"
+                )
 
     def message(self) -> str:
         if not self.data:
@@ -111,23 +120,35 @@ class TournamentFactory:
         self.headers = {"Authorization": f"Bearer {api}"}
         self._tourList: list[Tournament] = []
 
+    def get_byID(self, id: str) -> Tournament:
+        for tour in self._tourList:
+            if tour.get_id() == id:
+                return tour
+        logger.warning("Такого id нет")
+
     async def create(self, params: TournamentParams) -> Tournament:
-        tour = Tournament(self.session, params, self.headers)
+        tour = Tournament(self.session, self.headers, params)
         await tour._create()
 
         self._tourList.append(tour)
         return tour
 
     async def terminate(self, id: str) -> bool:
-        for tour in self._tourList:
-            if tour.get_id() == id:
-                return await tour.terminate()
-        logger.warning("Такого id нет")
-        return False
+        tour = self.get_byID(id)
+        if tour:
+            try:
+                await tour.terminate()
+                self._tourList.remove(tour)
+                return True
+            except ConnectionError:
+                return False
 
     async def get_tours(self) -> list[Tournament]:
         if not self._tourList:
-            async with self.session.get(f"https://lichess.org/api/user/{username}/tournament/created", headers=self.headers) as response:
+            async with self.session.get(
+                f"https://lichess.org/api/user/{username}/tournament/created",
+                headers=self.headers,
+            ) as response:
                 async for i in response.content:
                     data = json.loads(i.decode("utf-8"))
                     tour = Tournament(self.session, self.headers)

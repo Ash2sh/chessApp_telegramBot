@@ -1,8 +1,8 @@
 from aiogram import Bot, F, Router
 from aiogram.filters import BaseFilter, Command
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, FSInputFile
 
-from bot.config import logger
+from bot.config import logger, dataPath
 from bot.middlewares.broadcaster import Notify
 from bot.utils.keyboard import InlineKeyboard
 from bot.utils.tournament import Tournament, TournamentFactory, TournamentParams
@@ -31,6 +31,12 @@ class IsAdmin(BaseFilter):
         # Для групп/супергрупп проверяем админство
         member = await bot.get_chat_member(message.chat.id, message.from_user.id)
         return member.status in ("administrator", "creator")
+
+
+async def get_apps_handler(message: Message) -> None:
+    file = FSInputFile(f"{dataPath}/users.xlsx")
+    print(file)
+    await message.answer_document(file)
 
 
 async def top_players_handler(message: Message) -> None:
@@ -96,8 +102,9 @@ async def stop_tournament_handler(message: Message, tour: TournamentFactory) -> 
         tours = []
         for i in await tour.get_tours():
             name = i.data["fullName"]
-            callData = f"tourId_{i.get_id()}"
-            tours.append({"text": name, "callback_data": callData})
+            tourId = i.get_id()
+            callData = f"tourId_{tourId}"
+            tours.append({"text": f"{tourId} | {name}", "callback_data": callData})
         if tours:
             buttons = InlineKeyboard(tours)
             await message.answer(
@@ -131,6 +138,7 @@ async def tournament_id_received_handler(
 
 
 def reg_handler(router: Router) -> None:
+    router.message.register(get_apps_handler, Command(commands=["get_apps"]), IsAdmin())
     router.message.register(
         top_players_handler, Command(commands=["top_players"]), IsAdmin()
     )

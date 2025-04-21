@@ -14,6 +14,7 @@ TOKEN: str = getenv("TOKEN")  # Example: "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 username = "TaSH1R000"
 API_TOKEN = getenv("API_TOKEN")
 
+
 timezone = pytz.timezone("Asia/Bishkek")
 
 AUTO_CHAT_ID = 943922098
